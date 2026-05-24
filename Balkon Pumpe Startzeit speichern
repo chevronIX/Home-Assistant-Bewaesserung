@@ -1,0 +1,15 @@
+alias: Balkon Pumpe Startzeit speichern
+description: ""
+triggers:
+  - entity_id: switch.sd
+    from: "off"
+    to: "on"
+    trigger: state
+conditions: []
+actions:
+  - target:
+      entity_id: input_datetime.balkon_pumpe_startzeit
+    data:
+      datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+    action: input_datetime.set_datetime
+mode: single
