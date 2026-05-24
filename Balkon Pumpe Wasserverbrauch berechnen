@@ -1,0 +1,24 @@
+alias: Balkon Pumpe Wasserverbrauch berechnen
+description: ""
+triggers:
+  - entity_id: switch.sd
+    from: "on"
+    to: "off"
+    trigger: state
+conditions: []
+actions:
+  - variables:
+      start_ts: >-
+        {{ as_timestamp(states('input_datetime.balkon_pumpe_startzeit')) |
+        float(0) }}
+      stop_ts: "{{ as_timestamp(now()) | float(0) }}"
+      laufzeit_sekunden: "{{ [stop_ts - start_ts, 0] | max }}"
+      verbrauch_liter: "{{ (laufzeit_sekunden * 0.0666667) | float(0) }}"
+      bisher_verbraucht: "{{ states('input_number.balkon_wassertank_verbraucht') | float(0) }}"
+      neuer_wert: "{{ [bisher_verbraucht + verbrauch_liter, 85] | min | round(1) }}"
+  - target:
+      entity_id: input_number.balkon_wassertank_verbraucht
+    data:
+      value: "{{ neuer_wert }}"
+    action: input_number.set_value
+mode: single
