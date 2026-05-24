@@ -1,0 +1,9 @@
+sequence:
+  - target:
+      entity_id: input_number.balkon_wassertank_verbraucht
+    data:
+      value: 0
+    action: input_number.set_value
+mode: single
+description: ""
+alias: Balkon Wassertank Reset
