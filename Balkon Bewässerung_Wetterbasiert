@@ -1,0 +1,82 @@
+alias: Balkon Bewässerung wetterbasiert
+description: ""
+triggers:
+  - at: "06:00:00"
+    trigger: time
+    enabled: true
+  - at: "20:30:00"
+    trigger: time
+conditions: []
+actions:
+  - variables:
+      wetter_entity: weather.forecast_home
+      tank_entity: sensor.balkon_wassertank_fullstand
+      warm_ab: 15
+      sehr_heiss_ab: 22
+      regen_schwelle_mm: 0.5
+      tank_minimum: 10
+  - target:
+      entity_id: weather.forecast_home
+    data:
+      type: daily
+    response_variable: daily_forecast
+    action: weather.get_forecasts
+  - variables:
+      forecast_heute: |
+        {{ daily_forecast[wetter_entity].forecast[0] }}
+      max_temp_heute: |
+        {{ forecast_heute.temperature | float(0) }}
+      regen_heute: |
+        {{ forecast_heute.precipitation | default(0) | float(0) }}
+      wetter_heute: |
+        {{ forecast_heute.condition | default('unknown') }}
+      tank_fuellstand: |
+        {{ states(tank_entity) | float(0) }}
+      regnet_heute: >
+        {{ wetter_heute in ['rainy', 'pouring', 'lightning-rainy', 'hail',
+        'snowy-rainy'] }}
+      regen_erwartet: |
+        {{ regen_heute >= regen_schwelle_mm }}
+      sehr_heiss: |
+        {{ max_temp_heute > sehr_heiss_ab }}
+      warm: |
+        {{ max_temp_heute >= warm_ab }}
+      tank_ok: |
+        {{ tank_fuellstand >= tank_minimum }}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ false }}"
+        sequence: []
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.now.strftime('%H:%M:%S') == '20:30:00' }}"
+          - condition: template
+            value_template: "{{ warm }}"
+          - condition: template
+            value_template: "{{ not regnet_heute }}"
+          - condition: template
+            value_template: "{{ not regen_erwartet }}"
+          - condition: template
+            value_template: "{{ not tank_ok }}"
+        sequence:
+          - action: notify.mobile_app_pixl
+            data:
+              title: Balkon Bewässerung gestoppt
+              message: >
+                Der Tankfüllstand ist zu niedrig ({{ tank_fuellstand | round(0)
+                }} %). Die Bewässerung wurde nicht gestartet.
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.now.strftime('%H:%M:%S') == '20:30:00' }}"
+          - condition: template
+            value_template: "{{ warm }}"
+          - condition: template
+            value_template: "{{ not regnet_heute }}"
+          - condition: template
+            value_template: "{{ not regen_erwartet }}"
+          - condition: template
+            value_template: "{{ tank_ok }}"
+        sequence:
+          - action: script.wasser_marsch
+mode: single
